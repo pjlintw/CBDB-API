@@ -30,7 +30,8 @@ class CBDBAPI(object):
 		args = parser.parse_args()
 
 		# 測試區
-		args.n = ['趙光美','昭憲太后','趙匡胤','趙弘殷','張令鐸']  # 趙瑗
+		#'趙弘殷','張令鐸','趙元佐'
+		args.n = ['趙美光','趙弘殷','張令鐸','趙元佐','趙匡胤']  # 趙瑗
 
 		if args.rf:
 			query_lst = self.file2lst(args.rf)
@@ -91,51 +92,60 @@ class CBDBAPI(object):
 			pprint(data)
 			try:
 				person_infos = data['Package']['PersonAuthority']['PersonInfo']['Person']
-				if data['Package']['PersonAuthority']['DataSource'] == 'CBDB':
-					continue
+				# if data['Package']['PersonAuthority']['DataSource'] == 'BDB':
+				# 	continue
 			except:
 				continue
 			time.sleep(0.1)
 
+			# detect list or dictionary
+			if isinstance(person_infos, list):
+				k = person_infos[0]
+			elif isinstance(person_infos, dict):
+				k = person_infos
+			else:
+				print('unknown instance')
 
-			for k in person_infos:
-				#pprint(k)
-				for key_name in k:
+			for key_name in k:
 
-					if type(k[key_name]) == str:
-						print('no data inside', k[key_name])
-					elif key_name == 'BasicInfo':
-						# dict
-						basic_info_dict = k['BasicInfo']
-						new_df = pd.Series(basic_info_dict).to_frame().T
-						df_set['BasicInfo'] = pd.concat([df_set['BasicInfo'], new_df], axis=0, ignore_index=True)
-						person_id = basic_info_dict['PersonId']
-					else:
-						for second_key_name in k[key_name]:
+				if type(k[key_name]) == str:
+					print('no data inside', k[key_name])
+				elif key_name == 'BasicInfo':
+					# dict
+					basic_info_dict = k['BasicInfo']
+					new_df = pd.Series(basic_info_dict).to_frame().T
+					df_set['BasicInfo'] = pd.concat([df_set['BasicInfo'], new_df], axis=0, ignore_index=True)
+					person_id = basic_info_dict['PersonId']
+				else:
+					for second_key_name in k[key_name]:
 
-							type_of_dict_or_list = type(k[key_name][second_key_name])
-							data_dict_or_list = k[key_name][second_key_name]
-							if type_of_dict_or_list == list:
-								is_list = data_dict_or_list
-								new_df = pd.DataFrame(is_list)
-								# add person_id to first position
-								first_position_col = [ person_id for i in range(len(new_df.index))]
-								new_df.insert(loc=0, column='add_person_id', value=first_position_col)
+						type_of_dict_or_list = type(k[key_name][second_key_name])
+						data_dict_or_list = k[key_name][second_key_name]
+						if type_of_dict_or_list == list:
+							is_list = data_dict_or_list
+							new_df = pd.DataFrame(is_list)
+							# add person_id to first position
+							first_position_col = [person_id for i in range(len(new_df.index))]
+							new_df.insert(loc=0, column='add_person_id', value=first_position_col)
 
-								df_set[key_name] = pd.concat([df_set[key_name], new_df], axis=0, ignore_index=True)
+							df_set[key_name] = pd.concat([df_set[key_name], new_df], axis=0, ignore_index=True)
 
-							elif type_of_dict_or_list == dict:
-								is_dict = data_dict_or_list
-								new_df = pd.Series(is_dict).to_frame().T
+						elif type_of_dict_or_list == dict:
+							is_dict = data_dict_or_list
+							new_df = pd.Series(is_dict).to_frame().T
 
-								# add person_id to first position
-								first_position_col = [person_id for i in range(len(new_df.index))]
-								new_df.insert(loc=0, column='add_person_id', value=first_position_col)
+							# add person_id to first position
+							first_position_col = [person_id for i in range(len(new_df.index))]
+							new_df.insert(loc=0, column='add_person_id', value=first_position_col)
 
-								df_set[key_name] = pd.concat([df_set[key_name], new_df], axis=0, ignore_index=True)
+							df_set[key_name] = pd.concat([df_set[key_name], new_df], axis=0, ignore_index=True)
 
-							else:
-								print('!!! type:',type_of_dict_or_list)
+						else:
+							print('!!! type:', type_of_dict_or_list)
+
+
+
+
 		# store
 		self.store_pd_excel_writer(df_set, writer)
 
